@@ -17,6 +17,11 @@ namespace WeShopAlot.Testing.WebApis
     /// pipeline, controllers, authentication, and AutoMapper, with an in-memory
     /// EF Core database and in-memory stand-ins for Redis, so no SQL Server,
     /// Redis, or user secrets are needed.
+    ///
+    /// This is the fast tier. The in-memory provider does not run migrations and does
+    /// not enforce foreign keys, column sizes, or SQL semantics; for those, see
+    /// <see cref="WeShopAlotSqlApiFactory"/>, which rebuilds a real SQL Server database
+    /// with the same seeder the console app uses.
     /// </summary>
     public class WeShopAlotApiFactory : WebApplicationFactory<Program>
     {
@@ -38,9 +43,9 @@ namespace WeShopAlot.Testing.WebApis
                 services.AddDbContext<WeShopAlotContext>(o => o.UseInMemoryDatabase(databaseName));
 
                 services.RemoveAll<IResponseCacheService>();
-                services.AddSingleton<IResponseCacheService, NoResponseCache>();
+                services.AddSingleton<IResponseCacheService, TestDoubles.NoResponseCache>();
                 services.RemoveAll<IBasketRepository>();
-                services.AddSingleton<IBasketRepository, InMemoryBasketRepository>();
+                services.AddSingleton<IBasketRepository, TestDoubles.InMemoryBasketRepository>();
             });
         }
 
@@ -66,20 +71,6 @@ namespace WeShopAlot.Testing.WebApis
                 new DeliveryMethod { Id = 1, ShortName = "UPS1", Description = "Fastest", DeliveryTime = "1-2 Days", Price = 10m },
                 new DeliveryMethod { Id = 2, ShortName = "FREE", Description = "Free", DeliveryTime = "1-2 Weeks", Price = 0m });
             await db.SaveChangesAsync();
-        }
-
-        private sealed class NoResponseCache : IResponseCacheService
-        {
-            public Task CacheResponseAsync(string cacheKey, object response, TimeSpan timeToLive) => Task.CompletedTask;
-            public Task<string> GetCachedResponse(string cacheKey) => Task.FromResult<string>(null);
-        }
-
-        private sealed class InMemoryBasketRepository : IBasketRepository
-        {
-            private readonly Dictionary<string, CustomerBasket> baskets = new();
-            public Task<CustomerBasket> GetBasketAsync(string basketId) => Task.FromResult(baskets.GetValueOrDefault(basketId));
-            public Task<CustomerBasket> UpdateBasketAsync(CustomerBasket basket) { baskets[basket.Id] = basket; return Task.FromResult(basket); }
-            public Task<bool> DeleteBasketAsync(string basketId) => Task.FromResult(baskets.Remove(basketId));
         }
     }
 }

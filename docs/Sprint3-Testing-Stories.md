@@ -10,6 +10,12 @@ Done already, in the PR that opened this project: `ProductSpecParams`,
 defaults and `MappingProfiles` tests, the `Search = null` fix, and CI running
 the unit project first.
 
+Also done, in the PR that moved seeding into `WeShopAlot.Data`: `DatabaseSeeder`
+(`RecreateAsync` + `SeedAsync`, shared by the console app and the tests), the SQL
+Server test tier (`WeShopAlotSqlApiFactory` + `SqlApiTests`, a throw-away LocalDB
+database per run), and `SeedDataTests` on the JSON. `docs/Database.md` explains it.
+Stories 9–11 build on that tier.
+
 ---
 
 ## 1. PageIndex below 1 produces a negative Skip
@@ -99,7 +105,8 @@ risk guard applies: pull the arithmetic out.
 `WeShopAlot.Testing.Services`, `WeShopAlot.Testing.Repositories` (namespace
 `OurGovRepositoryTests`) and `WeShopAlot.Testing.XSLT` each hold one `TestMethod1`
 that asserts nothing. `WeShopAlot.Testing.Shared` carries `OurGov.*` namespaces and a
-`Dispose()` that throws `NotImplementedException`.
+`Dispose()` that throws `NotImplementedException`; its `BaseIntegrationTestsClass` was
+an early sketch of what `WeShopAlotSqlApiFactory` now does, so nothing is lost.
 
 **Acceptance**
 - [ ] Either delete the three projects and `Testing.Shared` from the solution, or give each a first real test — decide in the PR description, not silently.
@@ -117,3 +124,76 @@ CI runs the suites but a reviewer has to open the log to see counts. Publish the
 - [ ] A test-summary step (for example `dorny/test-reporter` or `EnricoMi/publish-unit-test-result-action`) posts pass/fail counts on the PR.
 - [ ] Angular: `ng test --watch=false --code-coverage` and the `coverage/` folder uploaded the same way.
 - [ ] `docs/BuildGate.md` updated with where to find the reports.
+
+## 9. The SQL Server test tier runs in CI
+
+**Branch:** `ci/sqlserver-tier` · **Size:** M · **Label:** ci, testing
+
+`SqlApiTests` run on every developer machine with LocalDB but CI skips them
+(`--filter "TestCategory!=SqlServer"`), because the Linux runners have no SQL Server.
+GitHub Actions can start one as a service container.
+
+**Acceptance**
+- [ ] The `api` job in `.github/workflows/ci.yml` declares a `services:` entry for
+      `mcr.microsoft.com/mssql/server:2022-latest` with `ACCEPT_EULA=Y`, a strong
+      `MSSQL_SA_PASSWORD` (a literal is fine: the container lives for one job and is
+      unreachable from outside), port 1433, and a health check (`/opt/mssql-tools18/bin/sqlcmd -C -Q "SELECT 1"`).
+- [ ] The `WeShopAlot.Testing.WebApis` step sets `WESHOPALOT_TEST_SQLSERVER` to
+      `Server=localhost,1433;User Id=sa;Password=...;TrustServerCertificate=true` (no
+      database name) and drops the filter, so both tiers run.
+- [ ] A deliberate failure first: open the PR with a pending-migration test broken on
+      purpose (or a wrong count in `Catalog_IsTheShippedOne`), watch CI go red, revert.
+      The PR description links both runs.
+- [ ] `docs/BuildGate.md` and `docs/Database.md` (section 4, "In CI") updated.
+
+## 10. The other money columns are still decimal(5,2)
+
+**Branch:** `fix/money-precision` · **Size:** M · **Label:** bug, testing, design
+
+`Order.Subtotal` was widened to `decimal(18,2)` in the `AddressNames` migration because
+orders over $999.99 failed to save. The other five money columns were left as they were:
+`Product.Price`, `DeliveryMethod.Price`, `BasketItem.Price`, `OrderItem.Price` and
+`CustomerBasket.ShippingPrice` are all `[Column(TypeName = "decimal (5,2)")]`, so no
+product can cost $1,000 or more. Add a $1,200 guitar to `products.json` and the seeder
+dies with a SQL arithmetic-overflow error; the in-memory tests never notice, and
+`SeedDataTests.Prices_FitTheDecimal5_2Columns` only keeps the *shipped* data under the
+limit. This is the first story that needs the SQL Server tier to prove the bug and the fix.
+
+**Acceptance**
+- [ ] A failing `SqlApiTests` test first: seed one extra product priced 1200.00 through
+      `DatabaseSeeder.SeedAsync(db, data)` with a modified `SeedData`, and assert it can be
+      read back through `GET /api/product` (today the seed throws).
+- [ ] Decide the precision with the Product Owner (`decimal(18,2)`, matching `Subtotal`, is
+      the obvious answer), change the five attributes, add one migration that alters the five
+      columns, and run the seeder.
+- [ ] Update `Prices_FitTheDecimal5_2Columns` to the new limit (and rename it).
+- [ ] `Schema_EveryMigrationApplied_NonePending` and the new test green; the fast tier
+      unchanged.
+- [ ] Angular and WPF: check whether anything formats or caps a price at four digits.
+
+## 11. One more question only the database can answer
+
+**Branch:** `test/sql-tier-<topic>` · **Size:** S · **Label:** testing
+
+Pick one behavior from the list below, write it as a `SqlApiTests` test that fails or
+is missing today, and make it pass. One story per developer; coordinate in standup so
+no two people take the same one.
+
+- `GET /api/product?pageIndex=0` against SQL Server (`OFFSET -6 ROWS` fails where LINQ
+  to Objects silently gave page 1). Pairs with story 1: the SQL test is the proof the
+  clamp was needed.
+- Case-insensitive search: `?search=BLONDIE` finds Blondie. Works today because of
+  `ToLower()`; the SQL tier shows whether the database collation would have handled it
+  anyway, and what the generated SQL looks like (turn on EF Core logging in the factory).
+- Deleting a user's address: does `Address.IsDeleted` soft-delete, or is the row gone?
+  Read the row back after `DELETE /api/account/address` (if the endpoint exists; if it
+  does not, that is the finding).
+- Two orders for the same user: `GET /api/order` returns both, newest first, from the
+  database's ordering and not from insertion luck.
+
+**Acceptance**
+- [ ] The test reads the rows (`factory.CreateDbContext()`), not only the HTTP response,
+      for at least one assertion.
+- [ ] The PR description says in one sentence why the in-memory tier could not have
+      caught this.
+

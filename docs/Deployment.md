@@ -155,14 +155,14 @@ The same can be done by clicking in IIS Manager: **Application Pools → Add** (
 
 Run the seeder **once**, on the server, from a PowerShell window opened after step 3 (so it sees the variables).
 
-> **The seeder drops every table in the database before it creates them.** On a server that has been in use, that means every account, basket and order is gone. Run it to create the database the first time, or when you deliberately want a fresh start, and at no other time.
+> **The seeder drops every table in the `WSA` schema before it creates them.** On a server that has been in use, that means every account, basket and order is gone. Run it to create the database the first time, or when you deliberately want a fresh start, and at no other time. It prints what it did and exits; [Database.md](Database.md) describes each step.
 
 ```powershell
 cd C:\inetpub\WeShopAlot\Seeder
 .\WeShopAlot.Data.ConsoleApp.exe
 ```
 
-It applies the migrations and loads the product types, brands, delivery methods and the products from its `Content\data\json` files, then exits. "Invalid object name" errors from the drop script on an empty database are harmless; it has nothing to drop yet.
+It drops the `WSA` schema if there is one, applies the migrations, loads the product types, brands, delivery methods and products from the seed data embedded in `WeShopAlot.Data.dll`, prints the counts, and exits with code 0 (1 on failure, with the reason). On a brand-new database there is nothing to drop and the step is skipped.
 
 ## 7. Verify
 
@@ -199,7 +199,7 @@ Settings live in environment variables, so a new package never overwrites them. 
 
 ```powershell
 cd C:\projects\WeShopAlot\Solution
-dotnet ef migrations script --idempotent --project WeShopAlot.Data --startup-project "WeShopAlot..WebAPI" --output ..\publish\migrate.sql
+dotnet ef migrations script --idempotent --project WeShopAlot.Data --startup-project WeShopAlot.Data.ConsoleApp --output ..\publish\migrate.sql
 ```
 
 ```powershell

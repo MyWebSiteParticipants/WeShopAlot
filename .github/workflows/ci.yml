@@ -3,7 +3,9 @@
 # Two jobs, one per half of the app:
 #   api    - builds the Web API, runs the pure unit tests (WeShopAlot.Testing.Unit),
 #            then the in-memory API tests (WebApplicationFactory: no database,
-#            Redis or secrets needed)
+#            Redis or secrets needed). The SQL Server tier (TestCategory=SqlServer,
+#            SqlApiTests) is left out: these runners have no SQL Server. Running it
+#            here with a mssql service container is a Sprint 3 story (docs/Sprint3-Testing-Stories.md).
 #   client - installs, builds and unit-tests the Angular client
 #
 # The WPF client is not built here: it needs Windows, and these runners are Linux.
@@ -40,7 +42,7 @@ jobs:
           dotnet-version: 10.0.x
       - run: dotnet build "WeShopAlot..WebAPI/WeShopAlot.WebAPI.csproj" --configuration Release
       - run: dotnet test WeShopAlot.Testing.Unit/WeShopAlot.Testing.Unit.csproj --configuration Release
-      - run: dotnet test WeShopAlot.Testing.WebApis/WeShopAlot.Testing.WebApis.csproj --configuration Release
+      - run: dotnet test WeShopAlot.Testing.WebApis/WeShopAlot.Testing.WebApis.csproj --configuration Release --filter "TestCategory!=SqlServer"
 
   client:
     runs-on: ubuntu-latest

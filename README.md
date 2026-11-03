@@ -7,16 +7,16 @@ A complete e-commerce reference application: an **ASP.NET Core Web API (.NET 10)
 | Project | What it holds |
 |---|---|
 | `WeShopAlot..WebAPI` | Controllers, middleware, error types, the `[Cached]` attribute, Swagger, `Program.cs`; serves the built Angular app from `wwwroot` |
-| `WeShopAlot.Data` | EF Core context, entities, migrations, repositories, query specifications |
+| `WeShopAlot.Data` | EF Core context, entities, migrations, repositories, query specifications; `Seed/` holds the sample catalog (JSON) and `DatabaseSeeder`, which rebuilds and seeds a database |
 | `WeShopAlot.Infrastructure.Services` | Orders, Stripe payments, JWT tokens, Redis response cache |
 | `WeShopAlot.Shared` | DTOs shared by the API and its .NET clients |
-| `WeShopAlot.Data.ConsoleApp` | Creates the database and loads the JSON seed data |
+| `WeShopAlot.Data.ConsoleApp` | The command that rebuilds the database: runs `DatabaseSeeder` and exits. Also the startup project for `dotnet ef` |
 | `Client` | The Angular client |
 | `WeShopAlot.UI.ClientWPF` | A WPF desktop client of the same API (shop, basket, checkout with Stripe, orders) |
-| `WeShopAlot.Testing.*` | Tests; `Testing.WebApis` runs the whole API in memory with WebApplicationFactory |
+| `WeShopAlot.Testing.*` | Tests; `Testing.Unit` is pure functions, `Testing.WebApis` runs the whole API with WebApplicationFactory in two tiers: an in-memory database, and a real SQL Server database rebuilt per run by `DatabaseSeeder` |
 | `Deployment`, `docker-compose.yml` | ARM templates for Azure; Redis for local development |
 
-Outside `Solution/`: `scripts/` holds the prerequisite checker, and `docs/` holds the setup guide and the build-gate guide. `.github/workflows/` and `.coderabbit.yaml` are the pull-request checks.
+Outside `Solution/`: `scripts/` holds the prerequisite checker, and `docs/` holds the setup guide, the database guide, the deployment guide, and the build-gate guide. `.github/workflows/` and `.coderabbit.yaml` are the pull-request checks.
 
 ## Prerequisites
 
@@ -80,13 +80,15 @@ PowerShell:
 ```powershell
 cd C:\projects\WeShopAlot\Solution
 docker compose up -d                                   # Redis on 6379 (viewer on http://localhost:8081)
-dotnet run --project WeShopAlot.Data.ConsoleApp        # first time: create and seed the database
+dotnet run --project WeShopAlot.Data.ConsoleApp        # build the database: drops the WSA schema, applies the migrations, loads the catalog, exits
 cd Client
 npm install
 npx ng build                                           # builds into the API's wwwroot
 cd ..
 dotnet run --project "WeShopAlot..WebAPI" --launch-profile https
 ```
+
+The seeder is also the reset: run it again for a clean shop. It wipes every table in the `WSA` schema of the database its secrets point at, so never aim it at a database other people use. **[docs/Database.md](docs/Database.md)** has the whole story: the migrations, the two kinds of seed data, overriding the connection string for one run, adding a migration, and the integration tests built on the same rebuild.
 
 Browse to https://localhost:7244 for the app, or https://localhost:7244/swagger for the API. For client development, run `npm start` in `Client` (it exports the HTTPS certificate on first run) and browse to https://localhost:4200.
 
@@ -106,14 +108,16 @@ PowerShell:
 
 ```powershell
 cd C:\projects\WeShopAlot\Solution
-dotnet test                       # API integration tests: no database or Redis needed
+dotnet test                       # unit tests, in-memory API tests, and (with LocalDB) the SQL Server API tests
 cd Client
 npx ng test --watch=false         # Angular unit tests (Vitest)
 ```
 
+Three .NET tiers: `WeShopAlot.Testing.Unit` (pure functions, no I/O), the in-memory `ApiTests` (the whole API, no database or Redis), and `SqlApiTests` (the whole API against a SQL Server database built for the run from the migrations and the shipped seed data, then dropped). The last tier is `TestCategory=SqlServer`; without a reachable SQL Server it reports Inconclusive rather than failing, and CI leaves it out. [docs/Database.md](docs/Database.md), section 4, explains how it works and how to write a test in it.
+
 ## Pull requests
 
-Every pull request runs three checks on a clean Linux machine: **api** (build the Web API and run its in-memory tests), **client** (build and test the Angular client) and **scan** (no `.env` files, no secrets), plus a CodeRabbit review. The class fork's `master` branch only merges green pull requests. **[docs/BuildGate.md](docs/BuildGate.md)** explains each check, what to do when one is red, and what to do if you pushed a secret (rotate it; deleting the file is not enough).
+Every pull request runs three checks on a clean Linux machine: **api** (build the Web API and run the unit and in-memory tests), **client** (build and test the Angular client) and **scan** (no `.env` files, no secrets), plus a CodeRabbit review. The class fork's `master` branch only merges green pull requests. **[docs/BuildGate.md](docs/BuildGate.md)** explains each check, what to do when one is red, and what to do if you pushed a secret (rotate it; deleting the file is not enough).
 
 ## History
 

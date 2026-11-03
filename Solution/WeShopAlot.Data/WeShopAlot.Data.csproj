@@ -29,7 +29,20 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\WeShopAlot.Data.Import\WeShopAlot.Data.Import.csproj" />
     <ProjectReference Include="..\WeShopAlot.Data.Shared\WeShopAlot.Data.Shared.csproj" />
+  </ItemGroup>
+
+  <!--
+    The sample catalog and the drop scripts travel inside the assembly, so the seeder console
+    app and the integration tests load the same data with no files to copy. Resource names are
+    "Seed.<file name>" (see SeedData.ReadResource).
+  -->
+  <ItemGroup>
+    <None Remove="Seed\Content\*.json" />
+    <None Remove="Seed\Scripts\*.sql" />
+    <EmbeddedResource Include="Seed\Content\*.json" LogicalName="Seed.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="Seed\Scripts\*.sql" LogicalName="Seed.%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>
