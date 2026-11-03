@@ -37,6 +37,7 @@ By the end of Sprint 5 (Dec 13), WeShopAlot has an honest, documented HTTP contr
 - Upgraded to current .NET and Angular versions (October 2026), including the saved-address fix
 - Cards / List product views in both clients
 - Footer build stamp and API URL
+- Seeder moved into `WeShopAlot.Data` (`DatabaseSeeder`), and a SQL Server integration-test tier that rebuilds a database per run with it (November 2026; `docs/Database.md`). Part of the Sprint 5 testing theme, delivered early; #21 updated
 
 ## Working agreement for contract changes
 
