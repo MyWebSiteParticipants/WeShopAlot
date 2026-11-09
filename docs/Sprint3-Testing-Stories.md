@@ -14,7 +14,7 @@ Also done, in the PR that moved seeding into `WeShopAlot.Data`: `DatabaseSeeder`
 (`RecreateAsync` + `SeedAsync`, shared by the console app and the tests), the SQL
 Server test tier (`WeShopAlotSqlApiFactory` + `SqlApiTests`, a throw-away LocalDB
 database per run), and `SeedDataTests` on the JSON. `docs/Database.md` explains it.
-Stories 9–11 build on that tier.
+Stories 9–11 build on that tier and are on the board as #31, #32 and #33 (under epics #29 and #27); `scripts/Create-Sprint3-Issues.ps1` is what put them there, and can add stories 1–8 with `-IncludeStories1To8`.
 
 ---
 
@@ -125,7 +125,7 @@ CI runs the suites but a reviewer has to open the log to see counts. Publish the
 - [ ] Angular: `ng test --watch=false --code-coverage` and the `coverage/` folder uploaded the same way.
 - [ ] `docs/BuildGate.md` updated with where to find the reports.
 
-## 9. The SQL Server test tier runs in CI
+## 9. The SQL Server test tier runs in CI (#31)
 
 **Branch:** `ci/sqlserver-tier` · **Size:** M · **Label:** ci, testing
 
@@ -146,7 +146,7 @@ GitHub Actions can start one as a service container.
       The PR description links both runs.
 - [ ] `docs/BuildGate.md` and `docs/Database.md` (section 4, "In CI") updated.
 
-## 10. The other money columns are still decimal(5,2)
+## 10. The other money columns are still decimal(5,2) (#32)
 
 **Branch:** `fix/money-precision` · **Size:** M · **Label:** bug, testing, design
 
@@ -171,7 +171,7 @@ limit. This is the first story that needs the SQL Server tier to prove the bug a
       unchanged.
 - [ ] Angular and WPF: check whether anything formats or caps a price at four digits.
 
-## 11. One more question only the database can answer
+## 11. One more question only the database can answer (#33)
 
 **Branch:** `test/sql-tier-<topic>` · **Size:** S · **Label:** testing
 
