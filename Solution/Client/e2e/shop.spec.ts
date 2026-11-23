@@ -10,11 +10,10 @@ test.describe('Shop', () => {
     const cards = page.locator('app-product-item');
     await expect(cards.first()).toBeVisible();
     expect(await cards.count()).toBeGreaterThan(0);
-  });
+  }); 
 
-  // Pranto's test
-/*  
-    test('search finds a single product by name', async ({ page }) => {
+
+ test('search finds a single product by name', async ({ page }) => {
     await page.getByPlaceholder('Search').fill('Blondie');
     await page.getByRole('button', { name: 'Search', exact: true }).click();
 
@@ -22,7 +21,7 @@ test.describe('Shop', () => {
     await expect(cards).toHaveCount(1);
     await expect(cards.first()).toContainText('Blondie');
   });
-*/
+
 
   // Nihal's test
 /*
