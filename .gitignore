@@ -14,3 +14,6 @@
 
 # Packages built by scripts/Publish-WeShopAlot.ps1
 publish/
+
+Solution/Client/test-results/
+Solution/Client/playwright-report/
